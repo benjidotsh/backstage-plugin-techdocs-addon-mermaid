@@ -14,46 +14,79 @@
  * limitations under the License.
  */
 
-import { registerFullscreenHandler, openFullscreen } from './fullscreenBridge';
+import {
+  subscribeFullscreen,
+  openFullscreen,
+  closeFullscreen,
+} from './fullscreenBridge';
 
 describe('fullscreenBridge', () => {
-  it('routes openFullscreen to the registered handler', () => {
-    const handler = jest.fn();
-    const unregister = registerFullscreenHandler(handler);
+  it('notifies a subscriber of opens and closes', () => {
+    const listener = jest.fn();
+    const unsubscribe = subscribeFullscreen(listener);
+    listener.mockClear(); // ignore the initial-state call
 
     openFullscreen('flowchart LR');
-    expect(handler).toHaveBeenCalledWith('flowchart LR');
+    expect(listener).toHaveBeenCalledWith('flowchart LR');
 
-    unregister();
+    closeFullscreen();
+    expect(listener).toHaveBeenCalledWith(null);
+
+    unsubscribe();
   });
 
-  it('is a no-op when no handler is registered', () => {
+  it('notifies every subscriber, so whichever addon instance is live can render the dialog', () => {
+    const a = jest.fn();
+    const b = jest.fn();
+    const unsubA = subscribeFullscreen(a);
+    const unsubB = subscribeFullscreen(b);
+
+    openFullscreen('flowchart LR');
+    expect(a).toHaveBeenCalledWith('flowchart LR');
+    expect(b).toHaveBeenCalledWith('flowchart LR');
+
+    closeFullscreen();
+    unsubA();
+    unsubB();
+  });
+
+  it('delivers the current state on subscribe, so late-mounting instances catch up', () => {
+    openFullscreen('flowchart LR');
+
+    const listener = jest.fn();
+    const unsubscribe = subscribeFullscreen(listener);
+    expect(listener).toHaveBeenCalledWith('flowchart LR');
+
+    closeFullscreen();
+    unsubscribe();
+  });
+
+  it('stops notifying after unsubscribe', () => {
+    const listener = jest.fn();
+    const unsubscribe = subscribeFullscreen(listener);
+    unsubscribe();
+    listener.mockClear();
+
+    openFullscreen('flowchart LR');
+    expect(listener).not.toHaveBeenCalled();
+
+    closeFullscreen();
+  });
+
+  it('drops open state once the last subscriber leaves, so a new page starts closed', () => {
+    const first = jest.fn();
+    const unsubFirst = subscribeFullscreen(first);
+    openFullscreen('flowchart LR');
+    unsubFirst();
+
+    const next = jest.fn();
+    const unsubNext = subscribeFullscreen(next);
+    expect(next).toHaveBeenCalledWith(null);
+    unsubNext();
+  });
+
+  it('is a no-op without subscribers', () => {
     expect(() => openFullscreen('flowchart LR')).not.toThrow();
-  });
-
-  it('routes to the most recently registered handler after a remount', () => {
-    // Simulates the addon remounting while the injected buttons persist:
-    // instance A registers, instance B registers, then A unmounts.
-    const handlerA = jest.fn();
-    const handlerB = jest.fn();
-
-    const unregisterA = registerFullscreenHandler(handlerA);
-    const unregisterB = registerFullscreenHandler(handlerB);
-    unregisterA();
-
-    openFullscreen('flowchart LR');
-    expect(handlerA).not.toHaveBeenCalled();
-    expect(handlerB).toHaveBeenCalledWith('flowchart LR');
-
-    unregisterB();
-  });
-
-  it('drops the handler once it unregisters itself', () => {
-    const handler = jest.fn();
-    const unregister = registerFullscreenHandler(handler);
-    unregister();
-
-    openFullscreen('flowchart LR');
-    expect(handler).not.toHaveBeenCalled();
+    expect(() => closeFullscreen()).not.toThrow();
   });
 });

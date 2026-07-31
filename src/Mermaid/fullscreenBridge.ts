@@ -16,38 +16,53 @@
 
 /**
  * Bridge between fullscreen buttons injected into the TechDocs shadow DOM
- * and the currently mounted MermaidAddon instance.
+ * and the MermaidAddon instances that render the fullscreen dialog.
  *
- * The addon component can unmount and remount (e.g. on the entity docs
- * page) while the shadow DOM — including the injected buttons and their
- * click listeners — persists. A button that captured a state setter
- * directly would keep pointing at a dead instance, so clicks route through
- * this module-level registration instead: the live instance registers its
- * handler on mount, and buttons always dispatch to the latest one.
+ * TechDocs can mount several addon instances for the same content (and
+ * remount them while the shadow DOM — including the injected buttons —
+ * persists). On the entity docs page the addon renderer even mounts
+ * duplicate instances whose React subtrees are unreliable: a state update
+ * on one instance may never commit. Buttons therefore dispatch through
+ * this module-level store, every mounted instance subscribes, and
+ * whichever instance's subtree is actually live renders the dialog.
  */
 
-type FullscreenHandler = (diagramText: string) => void;
+type FullscreenListener = (diagramText: string | null) => void;
 
-let currentHandler: FullscreenHandler | null = null;
+let currentDiagramText: string | null = null;
+const listeners = new Set<FullscreenListener>();
 
 /**
- * Registers the handler for fullscreen requests, replacing any previous
- * one. Returns an unregister function that only clears the registration if
- * this handler is still the current one (a newer registration wins).
+ * Subscribes to fullscreen open/close changes. The listener is invoked
+ * immediately with the current state so late-mounting instances catch up.
+ * Returns an unsubscribe function.
  */
-export const registerFullscreenHandler = (handler: FullscreenHandler) => {
-  currentHandler = handler;
+export const subscribeFullscreen = (listener: FullscreenListener) => {
+  listeners.add(listener);
+  listener(currentDiagramText);
   return () => {
-    if (currentHandler === handler) {
-      currentHandler = null;
+    listeners.delete(listener);
+    // Once no instance is mounted (e.g. after navigating away), drop any
+    // open state so a future page does not reopen a stale dialog.
+    if (listeners.size === 0) {
+      currentDiagramText = null;
     }
   };
 };
 
 /**
- * Dispatches a fullscreen request to the currently registered handler, if
- * any. Called by the buttons injected next to each diagram.
+ * Opens the fullscreen dialog for the given diagram. Called by the buttons
+ * injected next to each diagram.
  */
 export const openFullscreen = (diagramText: string) => {
-  currentHandler?.(diagramText);
+  currentDiagramText = diagramText;
+  listeners.forEach(listener => listener(currentDiagramText));
+};
+
+/**
+ * Closes the fullscreen dialog on every subscribed instance.
+ */
+export const closeFullscreen = () => {
+  currentDiagramText = null;
+  listeners.forEach(listener => listener(currentDiagramText));
 };

@@ -25,7 +25,11 @@ import { BackstageTheme } from '@backstage/theme';
 import { ZoomHandler } from './zoomHandler';
 import { deepMerge } from './utils';
 import { MermaidFullscreenDialog } from './MermaidFullscreenDialog';
-import { registerFullscreenHandler, openFullscreen } from './fullscreenBridge';
+import {
+  subscribeFullscreen,
+  openFullscreen,
+  closeFullscreen,
+} from './fullscreenBridge';
 
 export function selectConfig(backstagePalette: PaletteType, properties: MermaidProps): MermaidConfig {
   // Determine the default config based on palette
@@ -138,9 +142,10 @@ export const MermaidAddon = (properties: MermaidProps) => {
   const [ initialized, setInitialized ] = useState(false);
   const [fullscreenDiagramText, setFullscreenDiagramText] = useState<string | null>(null);
 
-  // The addon can remount while the shadow DOM (and the injected buttons)
-  // persists, so buttons dispatch through the bridge to the live instance.
-  useEffect(() => registerFullscreenHandler(setFullscreenDiagramText), []);
+  // The addon can remount — or be mounted several times — while the shadow
+  // DOM (and the injected buttons) persists, so buttons dispatch through
+  // the bridge and every mounted instance mirrors its state.
+  useEffect(() => subscribeFullscreen(setFullscreenDiagramText), []);
 
   useEffect(() => {
     if (initialized) {
@@ -251,7 +256,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
     <MermaidFullscreenDialog
       diagramText={fullscreenDiagramText}
       properties={properties}
-      onClose={() => setFullscreenDiagramText(null)}
+      onClose={closeFullscreen}
     />
   );
 };
