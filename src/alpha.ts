@@ -20,6 +20,7 @@ import type { MermaidProps } from "./Mermaid/props";
  *
  * Supported app-config keys:
  *   techdocs.addons.mermaid.enableZoom              — boolean (default: false)
+ *   techdocs.addons.mermaid.enableFullscreen        — boolean (default: false)
  *   techdocs.addons.mermaid.zoomOptions.scaleExtent  — [min, max]
  *   techdocs.addons.mermaid.zoomOptions.translateExtent — [[xmin, ymin], [xmax, ymax]]
  */
@@ -31,6 +32,8 @@ const ConfiguredMermaidAddon = () => {
 
   if (mermaidConfig) {
     props.enableZoom = mermaidConfig.getOptionalBoolean("enableZoom") ?? false;
+    props.enableFullscreen =
+      mermaidConfig.getOptionalBoolean("enableFullscreen") ?? false;
 
     const zoomConfig = mermaidConfig.getOptionalConfig("zoomOptions");
     if (zoomConfig) {

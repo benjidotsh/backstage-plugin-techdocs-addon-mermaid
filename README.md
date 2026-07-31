@@ -139,6 +139,28 @@ No code changes are needed beyond the standard module registration shown in
 the [Getting Started](#getting-started) section — the addon reads the
 configuration automatically at runtime.
 
+## Fullscreen Functionality
+
+Enabling `enableFullscreen` shows a button (revealed on hover) in the top-right
+corner of each diagram that opens it in a fullscreen modal. Pan and zoom inside
+the modal follow the `enableZoom` setting.
+
+### Legacy Frontend System
+
+```typescript
+<Mermaid enableFullscreen />
+```
+
+### New Frontend System
+
+```yaml
+# app-config.yaml
+techdocs:
+  addons:
+    mermaid:
+      enableFullscreen: true
+```
+
 ## Auto-Detection vs. Manual Detection
 
 By default, this plugin will autodetect diagrams based on the starting token of the code block. In some cases, however, this auto-detection is not sufficient, for example, because of an unrecognized

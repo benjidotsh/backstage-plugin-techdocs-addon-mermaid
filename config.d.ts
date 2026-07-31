@@ -9,6 +9,14 @@ export interface Config {
          */
         enableZoom?: boolean;
 
+        /**
+         * Whether to show a button on each mermaid diagram that opens it
+         * in a fullscreen modal.
+         *
+         * @visibility frontend
+         */
+        enableFullscreen?: boolean;
+
         zoomOptions?: {
           /**
            * D3 zoom scale extent as [min, max].
