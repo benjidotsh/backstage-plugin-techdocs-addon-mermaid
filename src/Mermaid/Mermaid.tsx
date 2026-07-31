@@ -24,12 +24,7 @@ import { MermaidProps } from './props';
 import { BackstageTheme } from '@backstage/theme';
 import { ZoomHandler } from './zoomHandler';
 import { deepMerge } from './utils';
-import { MermaidFullscreenDialog } from './MermaidFullscreenDialog';
-import {
-  subscribeFullscreen,
-  openFullscreen,
-  closeFullscreen,
-} from './fullscreenBridge';
+import { registerFullscreenContext, openFullscreen } from './fullscreenBridge';
 
 export function selectConfig(backstagePalette: PaletteType, properties: MermaidProps): MermaidConfig {
   // Determine the default config based on palette
@@ -140,12 +135,13 @@ export const MermaidAddon = (properties: MermaidProps) => {
   const theme = useTheme<BackstageTheme>();
 
   const [ initialized, setInitialized ] = useState(false);
-  const [fullscreenDiagramText, setFullscreenDiagramText] = useState<string | null>(null);
 
-  // The addon can remount — or be mounted several times — while the shadow
-  // DOM (and the injected buttons) persists, so buttons dispatch through
-  // the bridge and every mounted instance mirrors its state.
-  useEffect(() => subscribeFullscreen(setFullscreenDiagramText), []);
+  // The dialog renders in a dedicated React root outside this component
+  // (see fullscreenBridge) — TechDocs mounts addon instances through an
+  // unreliable portal subtree, so a dialog rendered here may never commit.
+  useEffect(() => {
+    registerFullscreenContext({ properties, theme });
+  }, [properties, theme]);
 
   useEffect(() => {
     if (initialized) {
@@ -252,11 +248,5 @@ export const MermaidAddon = (properties: MermaidProps) => {
     });
   }, [initialized, mermaidPreBlocks, properties]);
 
-  return (
-    <MermaidFullscreenDialog
-      diagramText={fullscreenDiagramText}
-      properties={properties}
-      onClose={closeFullscreen}
-    />
-  );
+  return null;
 };
