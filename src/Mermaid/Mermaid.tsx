@@ -25,6 +25,7 @@ import { BackstageTheme } from '@backstage/theme';
 import { ZoomHandler } from './zoomHandler';
 import { deepMerge } from './utils';
 import { MermaidFullscreenDialog } from './MermaidFullscreenDialog';
+import { registerFullscreenHandler, openFullscreen } from './fullscreenBridge';
 
 export function selectConfig(backstagePalette: PaletteType, properties: MermaidProps): MermaidConfig {
   // Determine the default config based on palette
@@ -137,6 +138,10 @@ export const MermaidAddon = (properties: MermaidProps) => {
   const [ initialized, setInitialized ] = useState(false);
   const [fullscreenDiagramText, setFullscreenDiagramText] = useState<string | null>(null);
 
+  // The addon can remount while the shadow DOM (and the injected buttons)
+  // persists, so buttons dispatch through the bridge to the live instance.
+  useEffect(() => registerFullscreenHandler(setFullscreenDiagramText), []);
+
   useEffect(() => {
     if (initialized) {
       return;
@@ -179,7 +184,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
         return
       }
 
-      makeDiagram(highlightTable, diagramText, properties, setFullscreenDiagramText)
+      makeDiagram(highlightTable, diagramText, properties, openFullscreen)
     });
   }, [initialized, highlightTables, properties]);
 
@@ -216,7 +221,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
         return
       }
 
-      makeDiagram(highlightDiv, diagramText, properties, setFullscreenDiagramText)
+      makeDiagram(highlightDiv, diagramText, properties, openFullscreen)
     });
   }, [initialized, highlightDivs, properties]);
 
@@ -238,7 +243,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
 
       const diagramText = codeBlock.textContent || ''
 
-      makeDiagram(mermaidPreBlock, diagramText, properties, setFullscreenDiagramText)
+      makeDiagram(mermaidPreBlock, diagramText, properties, openFullscreen)
     });
   }, [initialized, mermaidPreBlocks, properties]);
 
