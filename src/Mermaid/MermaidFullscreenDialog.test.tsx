@@ -16,6 +16,8 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StylesProvider, jssPreset } from '@material-ui/core/styles';
+import { create } from 'jss';
 import mermaid from 'mermaid';
 
 import { MermaidFullscreenDialog } from './MermaidFullscreenDialog';
@@ -78,6 +80,26 @@ describe('MermaidFullscreenDialog', () => {
     );
     await screen.findByTestId('fullscreen-svg');
     expect(ZoomHandler).not.toHaveBeenCalled();
+  });
+
+  it('injects dialog styles into document.head even under a shadow-scoped styles provider', async () => {
+    // TechDocs wraps addons in a StylesProvider whose JSS inserts styles
+    // into the shadow root. The dialog portals to document.body, so its
+    // styles must escape to document.head or it renders unstyled.
+    const shadowInsertionPoint = document.createElement('div');
+    const shadowJss = create({ ...jssPreset(), insertionPoint: shadowInsertionPoint });
+
+    render(
+      <StylesProvider jss={shadowJss}>
+        <MermaidFullscreenDialog diagramText="flowchart LR" properties={{}} onClose={jest.fn()} />
+      </StylesProvider>,
+    );
+    await screen.findByTestId('fullscreen-svg');
+
+    const headRules = Array.from(document.head.querySelectorAll('style'))
+      .map(s => s.textContent)
+      .join('');
+    expect(headRules).toContain('.MuiDialog-paperFullScreen');
   });
 
   it('falls back to raw text and logs when render fails', async () => {
