@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Dialog from '@material-ui/core/Dialog';
 import IconButton from '@material-ui/core/IconButton';
 import CloseIcon from '@material-ui/icons/Close';
@@ -36,10 +36,9 @@ export const MermaidFullscreenDialog = (props: {
   onClose: () => void;
 }) => {
   const { diagramText, properties, onClose } = props;
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
     if (diagramText === null || !container) {
       return undefined;
     }
@@ -77,7 +76,7 @@ export const MermaidFullscreenDialog = (props: {
       cancelled = true;
       container.innerHTML = '';
     };
-  }, [diagramText, properties]);
+  }, [diagramText, properties, container]);
 
   return (
     <Dialog fullScreen open={diagramText !== null} onClose={onClose}>
@@ -89,7 +88,7 @@ export const MermaidFullscreenDialog = (props: {
         <CloseIcon />
       </IconButton>
       <div
-        ref={containerRef}
+        ref={setContainer}
         style={{
           display: 'flex',
           alignItems: 'center',
