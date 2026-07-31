@@ -24,6 +24,7 @@ import { MermaidProps } from './props';
 import { BackstageTheme } from '@backstage/theme';
 import { ZoomHandler } from './zoomHandler';
 import { deepMerge } from './utils';
+import { MermaidFullscreenDialog } from './MermaidFullscreenDialog';
 
 export function selectConfig(backstagePalette: PaletteType, properties: MermaidProps): MermaidConfig {
   // Determine the default config based on palette
@@ -45,7 +46,53 @@ export function selectConfig(backstagePalette: PaletteType, properties: MermaidP
 
 let diagramId = 0
 
-const makeDiagram = async (el: HTMLDivElement | HTMLPreElement, diagramText: string, properties: MermaidProps,) => {
+// Material 'fullscreen' icon, inlined because the shadow root has no stylesheets
+const FULLSCREEN_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
+
+const addFullscreenButton = (
+  diagramElement: HTMLDivElement,
+  diagramText: string,
+  onOpenFullscreen: (text: string) => void,
+) => {
+  diagramElement.style.position = 'relative';
+
+  const button = document.createElement('button');
+  button.setAttribute('aria-label', 'Open diagram fullscreen');
+  button.innerHTML = FULLSCREEN_ICON_SVG;
+  button.style.cssText = [
+    'position: absolute',
+    'top: 8px',
+    'right: 8px',
+    'display: flex',
+    'padding: 4px',
+    'border: none',
+    'border-radius: 4px',
+    'background: rgba(128, 128, 128, 0.2)',
+    'color: inherit',
+    'cursor: pointer',
+    'opacity: 0',
+    'transition: opacity 0.2s',
+  ].join(';');
+  button.addEventListener('click', () => onOpenFullscreen(diagramText));
+
+  // Hover/focus reveal via listeners — no stylesheet available in the shadow root
+  const show = () => { button.style.opacity = '1'; };
+  const hide = () => { button.style.opacity = '0'; };
+  diagramElement.addEventListener('mouseenter', show);
+  diagramElement.addEventListener('mouseleave', hide);
+  button.addEventListener('focus', show);
+  button.addEventListener('blur', hide);
+
+  diagramElement.appendChild(button);
+};
+
+const makeDiagram = async (
+  el: HTMLDivElement | HTMLPreElement,
+  diagramText: string,
+  properties: MermaidProps,
+  onOpenFullscreen: (text: string) => void,
+) => {
   el.style.display = 'none'
 
   const diagramElement = document.createElement('div')
@@ -70,6 +117,10 @@ const makeDiagram = async (el: HTMLDivElement | HTMLPreElement, diagramText: str
       );
       zoomHandler.initialize();
     }
+
+    if (properties.enableFullscreen) {
+      addFullscreenButton(diagramElement, diagramText, onOpenFullscreen);
+    }
   } catch (e) {
     el.style.display = ''
     diagramElement.remove()
@@ -84,6 +135,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
   const theme = useTheme<BackstageTheme>();
 
   const [ initialized, setInitialized ] = useState(false);
+  const [fullscreenDiagramText, setFullscreenDiagramText] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialized) {
@@ -127,7 +179,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
         return
       }
 
-      makeDiagram(highlightTable, diagramText, properties)
+      makeDiagram(highlightTable, diagramText, properties, setFullscreenDiagramText)
     });
   }, [initialized, highlightTables, properties]);
 
@@ -164,7 +216,7 @@ export const MermaidAddon = (properties: MermaidProps) => {
         return
       }
 
-      makeDiagram(highlightDiv, diagramText, properties)
+      makeDiagram(highlightDiv, diagramText, properties, setFullscreenDiagramText)
     });
   }, [initialized, highlightDivs, properties]);
 
@@ -186,9 +238,15 @@ export const MermaidAddon = (properties: MermaidProps) => {
 
       const diagramText = codeBlock.textContent || ''
 
-      makeDiagram(mermaidPreBlock, diagramText, properties)
+      makeDiagram(mermaidPreBlock, diagramText, properties, setFullscreenDiagramText)
     });
   }, [initialized, mermaidPreBlocks, properties]);
 
-  return null;
+  return (
+    <MermaidFullscreenDialog
+      diagramText={fullscreenDiagramText}
+      properties={properties}
+      onClose={() => setFullscreenDiagramText(null)}
+    />
+  );
 };

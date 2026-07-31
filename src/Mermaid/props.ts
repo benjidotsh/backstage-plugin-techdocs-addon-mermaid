@@ -48,4 +48,9 @@ export type MermaidProps = {
      * Only used when enableZoom is set to true.
      */
     zoomOptions?: ZoomOptions;
+    /**
+     * Shows a button on each diagram that opens it in a fullscreen modal.
+     * Pan/zoom inside the modal follows `enableZoom`.
+     */
+    enableFullscreen?: boolean;
 }

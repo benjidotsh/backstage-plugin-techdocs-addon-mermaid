@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TechDocsAddonTester } from '@backstage/plugin-techdocs-addons-test-utils';
 import { screen } from 'shadow-dom-testing-library';
 import mermaid from 'mermaid';
@@ -129,6 +131,65 @@ describe('Mermaid', () => {
     it('dark theme is set by default when variant is dark', () => {
       const config = selectConfig('dark', {});
       expect(config).toEqual({ theme: 'dark'});
+    });
+  });
+
+  describe('fullscreen', () => {
+    it('injects a fullscreen button when enableFullscreen is set', async () => {
+      await TechDocsAddonTester.buildAddonsInTechDocs([
+        <Mermaid enableFullscreen />,
+      ])
+        .withDom(<body>
+          <pre className="mermaid" data-testid="mermaid-test">
+            <code>flowchart LR</code>
+          </pre>
+        </body>)
+        .renderWithEffects();
+
+      expect(
+        await screen.findByShadowLabelText('Open diagram fullscreen'),
+      ).toBeInTheDocument();
+    });
+
+    it('does not inject a fullscreen button by default', async () => {
+      await TechDocsAddonTester.buildAddonsInTechDocs([
+        <Mermaid />,
+      ])
+        .withDom(<body>
+          <pre className="mermaid" data-testid="mermaid-test">
+            <code>flowchart LR</code>
+          </pre>
+        </body>)
+        .renderWithEffects();
+
+      // Wait until the diagram is rendered before asserting absence
+      await waitFor(() =>
+        expect(screen.getByShadowTestId('mermaid-test')).toHaveStyle('display: none'),
+      );
+      expect(
+        screen.queryByShadowLabelText('Open diagram fullscreen'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('opens the fullscreen dialog when the button is clicked', async () => {
+      await TechDocsAddonTester.buildAddonsInTechDocs([
+        <Mermaid enableFullscreen />,
+      ])
+        .withDom(<body>
+          <pre className="mermaid" data-testid="mermaid-test">
+            <code>flowchart LR</code>
+          </pre>
+        </body>)
+        .renderWithEffects();
+
+      const button = await screen.findByShadowLabelText('Open diagram fullscreen');
+      await userEvent.click(button);
+
+      // The MUI Dialog portals to document.body (outside the shadow root)
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+      expect(
+        await screen.findByLabelText('Close fullscreen diagram'),
+      ).toBeInTheDocument();
     });
   });
 });
